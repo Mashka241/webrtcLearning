@@ -1,14 +1,17 @@
 (async () => {
     const startCallButton = document.querySelector('button#call');
     const answerButton = document.querySelector('button#answer');
+    const hungUpButton = document.querySelector('button#hungup');
     const remoteVideo = document.querySelector('video#remoteVideo');
     const localVideo = document.querySelector('video#localVideo');
     let localStream;
     let peerConnection;
 
     answerButton.disabled = true;
+    hungUpButton.disabled = true;
     startCallButton.addEventListener('click', startCall);
     answerButton.addEventListener('click', answerCall);
+    hungUpButton.addEventListener('click', hungUp);
 
     const bc = new BroadcastChannel('test_channel');
     bc.addEventListener('message', (event) => {
@@ -32,6 +35,16 @@
             case 'answer':
                 handleAnswer(event.data);
                 break;
+            case 'hungup':
+                answerButton.disabled = true;
+                answerButton.classList.remove('calling');
+                hungUpButton.disabled = true;
+                hungUpButton.classList.remove('hungup');
+                startCallButton.disabled = false;
+                if (peerConnection) {
+                    hungUp();
+                }
+                break;
             default:
                 console.log('default', event.data.type);
         }
@@ -52,6 +65,9 @@
         createPeerConnection();
 
         bc.postMessage({ type: 'calling' });
+        hungUpButton.disabled = false;
+        hungUpButton.classList.add('hungup');
+        startCallButton.disabled = true;
     }
 
     async function createOffer() {
@@ -119,6 +135,9 @@
         createPeerConnection();
 
         bc.postMessage({ type: 'answering' });
+        hungUpButton.disabled = false;
+        hungUpButton.classList.add('hungup');
+        startCallButton.disabled = true;
     }
 
     async function handleOffer(offer) {
@@ -133,5 +152,21 @@
 
     async function handleAnswer(answer) {
         await peerConnection.setRemoteDescription(answer);
+    }
+
+    function hungUp() {
+        bc.postMessage({ type: 'hungup' });
+
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+
+        localVideo.srcObject = null;
+        remoteVideo.srcObject = null;
     }
 })()

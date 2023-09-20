@@ -49,3 +49,7 @@ button:active {
 button.calling {
     background-color: rgb(79, 156, 79);
 }
+
+button.hungup {
+    background-color: rgb(201, 98, 88);
+}
