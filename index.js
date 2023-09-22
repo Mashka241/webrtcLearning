@@ -17,15 +17,12 @@
     bc.addEventListener('message', (event) => {
         switch (event.data.type) {
             case 'calling':
-                console.log('1st TAB IS CALLING!!!');
                 answerButton.disabled = false;
                 answerButton.classList.add('calling');
+                break;
             case 'answering':
-                console.log('ANSWERING');
-                if (!peerConnection) { // ?
-                    return;
-                }
                 createOffer();
+                break;
             case 'candidate':
                 handleCandidate(event.data);
                 break;
@@ -56,7 +53,7 @@
             console.log('call already started');
             return;
         }
-        const constraints = { video: { width: 360, height: 640 } };
+        const constraints = { video: { width: 360, height: 640, fps: 10 } };
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
         localVideo.srcObject = localStream;
         window.localMediaStream = localStream;
@@ -126,7 +123,7 @@
         answerButton.disabled = true;
         answerButton.classList.remove('calling');
 
-        const constraints = { video: { width: 360, height: 640 } };
+        const constraints = { video: { width: 360, height: 640, fps: 10 } };
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
         localVideo.srcObject = localStream;
         window.localMediaStream = localStream;
@@ -159,6 +156,7 @@
 
         if (peerConnection) {
             peerConnection.close();
+            peerConnection.getStats().then(report => console.log('stats after closing', report));
             peerConnection = null;
         }
         if (localStream) {
