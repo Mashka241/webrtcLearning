@@ -1,0 +1,3 @@
+1. data channel chat
+2. stats report, each second, display fps
+3. read about firebase

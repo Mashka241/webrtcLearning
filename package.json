@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/Mashka241/webrtcLearning/issues"
   },
-  "homepage": "https://github.com/Mashka241/webrtcLearning#readme"
+  "homepage": "https://github.com/Mashka241/webrtcLearning#readme",
+  "dependencies": {
+    "ws": "^8.14.2"
+  }
 }

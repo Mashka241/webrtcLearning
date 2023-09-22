@@ -13,7 +13,7 @@
     answerButton.addEventListener('click', answerCall);
     hungUpButton.addEventListener('click', hungUp);
 
-    const bc = new BroadcastChannel('test_channel');
+    const bc = new WebSocketSignaling();
     bc.addEventListener('message', (event) => {
         switch (event.data.type) {
             case 'calling':
