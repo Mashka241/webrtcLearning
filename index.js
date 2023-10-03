@@ -2,16 +2,22 @@
     const startCallButton = document.querySelector('button#call');
     const answerButton = document.querySelector('button#answer');
     const hungUpButton = document.querySelector('button#hungup');
+    const callButtons = document.querySelector('#callcontrols');
+    const toggleVideoButton = document.querySelector('button#videotoggle');
     const remoteVideo = document.querySelector('video#remoteVideo');
     const localVideo = document.querySelector('video#localVideo');
     let localStream;
     let peerConnection;
+    let statsGathererInterval;
+
+    let isVideoOn = false;
 
     answerButton.disabled = true;
     hungUpButton.disabled = true;
     startCallButton.addEventListener('click', startCall);
     answerButton.addEventListener('click', answerCall);
     hungUpButton.addEventListener('click', hungUp);
+    toggleVideoButton.addEventListener('click', toggleVideo);
 
     const bc = new WebSocketSignaling();
     bc.addEventListener('message', (event) => {
@@ -47,17 +53,22 @@
         }
     });
 
+    async function createLocalStream() {
+        const constraints = { video: false, audio: true };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        localVideo.srcObject = localStream;
+        window.localMediaStream = localStream;
+        console.log('local stream created');
+    }
+
     async function startCall() {
         console.log('start call');
         if (peerConnection) {
             console.log('call already started');
             return;
         }
-        const constraints = { video: { width: 360, height: 640, fps: 10 } };
-        localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        localVideo.srcObject = localStream;
-        window.localMediaStream = localStream;
-        console.log('local stream created');
+
+        await createLocalStream();
 
         createPeerConnection();
 
@@ -65,6 +76,8 @@
         hungUpButton.disabled = false;
         hungUpButton.classList.add('hungup');
         startCallButton.disabled = true;
+
+        callButtons.classList.remove('invisible');
     }
 
     async function createOffer() {
@@ -79,6 +92,21 @@
             sdp: offer.sdp
         });
         await peerConnection.setLocalDescription(offer);
+    }
+
+    function displayRecvVideoStats(report) {
+        if (report.mediaType === 'video' && report.type === 'inbound-rtp') {
+            console.log(`framesPerSecond: ${report?.framesPerSecond}`);
+        }
+    }
+
+    async function processStats() {
+        if (!peerConnection) { return };
+        const stats = await peerConnection.getStats(null);
+
+        stats.forEach(report => {
+            displayRecvVideoStats(report);
+        });
     }
 
     function createPeerConnection() {
@@ -100,13 +128,14 @@
         });
 
         peerConnection.addEventListener('track', (event) => {
-            console.log('track event', event)
             const mediaStream = event.streams[0];
             window.remoteMediaStream = mediaStream;
             remoteVideo.srcObject = mediaStream;
         });
 
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        statsGathererInterval = setInterval(processStats, 1000);
         console.log('connection created', peerConnection);
     }
 
@@ -122,12 +151,9 @@
         console.log('answer call');
         answerButton.disabled = true;
         answerButton.classList.remove('calling');
+        callButtons.classList.remove('invisible');
 
-        const constraints = { video: { width: 360, height: 640, fps: 10 } };
-        localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        localVideo.srcObject = localStream;
-        window.localMediaStream = localStream;
-        console.log('answer: local stream created');
+        await createLocalStream();
 
         createPeerConnection();
 
@@ -166,5 +192,31 @@
 
         localVideo.srcObject = null;
         remoteVideo.srcObject = null;
+
+        clearInterval(statsGathererInterval)
+    }
+
+    async function toggleVideo() {
+        if (isVideoOn) {
+            console.log('toggle video OFF');
+            // ????
+            const videoTracks = stream.getVideoTracks();
+            videoTracks.forEach(track => track.stop());
+            localStream.removeTrack(videoTracks[0]);
+            localVideo.srcObject = null;
+
+            isVideoOn = false;
+        } else {
+            console.log('toggle video ON');
+            const constraints = { video: true, audio: true };
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const videoTracks = stream.getVideoTracks();
+            localStream.addTrack(videoTracks[0]);
+            localVideo.srcObject = localStream;
+
+            peerConnection.addTrack(videoTracks[0], localStream);
+            createOffer();
+            isVideoOn = true;
+        }
     }
 })()

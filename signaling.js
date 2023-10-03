@@ -24,7 +24,6 @@ class WebSocketSignaling {
     addEventListener(eventType, eventCallback) {
         const newEventCallback = (event) => {
             if (eventType === 'message') {
-                console.log('event.data', event.data);
                 const parsedMessage = JSON.parse(event.data);
                 eventCallback({
                     ...event,

@@ -53,3 +53,7 @@ button.calling {
 button.hungup {
     background-color: rgb(201, 98, 88);
 }
+
+.invisible {
+    visibility: hidden;
+}
