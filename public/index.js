@@ -11,6 +11,12 @@
     const messages = document.querySelector('#messages');
     const messageBox = document.querySelector('#message');
     const sendMessageButton = document.querySelector('button#sendMessage');
+
+    let roomRef;
+    let roomId;
+    const roomIdInput = document.querySelector('input#roomId');
+    let callerCandidatesCollection;
+
     let localStream;
     let peerConnection;
     let statsGathererInterval;
@@ -69,6 +75,12 @@
         console.log('local stream created');
     }
 
+    async function createRoom() {
+        const db = firebase.firestore();
+        roomRef = await db.collection('rooms').doc();
+        callerCandidatesCollection = roomRef.collection('callerCandidates');
+    }
+
     async function startCall() {
         console.log('start call');
         if (peerConnection) {
@@ -95,10 +107,18 @@
             offerToReceiveVideo: 1
         };
         const offer = await peerConnection.createOffer(offerOptions);
-        bc.postMessage({
-            type: offer.type,
-            sdp: offer.sdp
+        // bc.postMessage({
+        //     type: offer.type,
+        //     sdp: offer.sdp
+        // });
+        await roomRef.set({
+            offer: {
+                type: offer.type,
+                sdp: offer.sdp
+            }
         });
+        roomId = roomRef.id;
+        console.log('roomID', roomId);
         await peerConnection.setLocalDescription(offer);
     }
 
@@ -132,7 +152,8 @@
                 message.sdpMLineIndex = e.candidate.sdpMLineIndex;
             };
 
-            bc.postMessage(message);
+            callerCandidatesCollection.add(e.candidate.toJSON());
+            // bc.postMessage(message);
         });
 
         peerConnection.addEventListener('track', (event) => {
