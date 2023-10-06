@@ -88,11 +88,17 @@
             return;
         }
 
+        const db = firebase.firestore();
+        roomRef = await db.collection('rooms').doc();
+        callerCandidatesCollection = roomRef.collection('callerCandidates');
+
         await createLocalStream();
 
         createPeerConnection();
 
-        bc.postMessage({ type: 'calling' });
+        await createOffer();
+
+        // bc.postMessage({ type: 'calling' });
         hungUpButton.disabled = false;
         hungUpButton.classList.add('hungup');
         startCallButton.disabled = true;
