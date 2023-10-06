@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/Mashka241/webrtcLearning#readme",
   "dependencies": {
+    "firebase": "^10.4.0",
     "ws": "^8.14.2"
   }
 }

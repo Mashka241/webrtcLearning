@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome to Firebase Hosting</title>
+
+  <!-- update the version number as needed -->
+  <script defer src="/__/firebase/10.4.0/firebase-app-compat.js"></script>
+  <!-- include only the Firebase features as you need -->
+  <!-- <script defer src="/__/firebase/10.4.0/firebase-auth-compat.js"></script> -->
+  <!-- <script defer src="/__/firebase/10.4.0/firebase-database-compat.js"></script> -->
+  <script defer src="/__/firebase/10.4.0/firebase-firestore-compat.js"></script>
+  <!-- <script defer src="/__/firebase/10.4.0/firebase-functions-compat.js"></script> -->
+  <!-- <script defer src="/__/firebase/10.4.0/firebase-messaging-compat.js"></script> -->
+  <!-- <script defer src="/__/firebase/10.4.0/firebase-storage-compat.js"></script> -->
+  <!-- <script defer src="/__/firebase/10.4.0/firebase-analytics-compat.js"></script> -->
+  <!-- <script defer src="/__/firebase/10.4.0/firebase-remote-config-compat.js"></script> -->
+  <!-- <script defer src="/__/firebase/10.4.0/firebase-performance-compat.js"></script> -->
+  <!-- 
+      initialize the SDK after all desired features are loaded, set useEmulator to false
+      to avoid connecting the SDK to running emulators.
+    -->
+  <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+  <link rel="stylesheet" href="./index.css">
+</head>
+
+<body>
+  <div class="buttons container">
+    <button type="button" id="call">Start call</button>
+    <button type="button" id="answer">Answer</button>
+    <button type="button" id="hungup">Hung up</button>
+  </div>
+  <div class="renderers container">
+    <video id="localVideo" autoplay></video>
+    <video id="remoteVideo" autoplay></video>
+  </div>
+  <div class="container invisible" id="callcontrols">
+    <button type="button" id="videotoggle">toggle video</button>
+  </div>
+  <div class="container">
+    <button type="button" id="openChat">Want to chat?</button>
+    <div class="chat invisible">
+      <div class="messages" id="messages">
+      </div>
+      <div class="container send">
+        <textarea id="message"></textarea>
+        <button type="button" id="sendMessage">Send</button>
+      </div>
+    </div>
+  </div>
+</body>
+<script src="./signaling.js"></script>
+<script src="./index.js"></script>
+
+</html>
