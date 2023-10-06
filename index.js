@@ -6,9 +6,15 @@
     const toggleVideoButton = document.querySelector('button#videotoggle');
     const remoteVideo = document.querySelector('video#remoteVideo');
     const localVideo = document.querySelector('video#localVideo');
+    const openChatButton = document.querySelector('button#openChat');
+    const chat = document.querySelector('.chat');
+    const messages = document.querySelector('#messages');
+    const messageBox = document.querySelector('#message');
+    const sendMessageButton = document.querySelector('button#sendMessage');
     let localStream;
     let peerConnection;
     let statsGathererInterval;
+    let dataChannel;
 
     let isVideoOn = false;
 
@@ -18,6 +24,8 @@
     answerButton.addEventListener('click', answerCall);
     hungUpButton.addEventListener('click', hungUp);
     toggleVideoButton.addEventListener('click', toggleVideo);
+    openChatButton.addEventListener('click', openChat);
+    sendMessageButton.addEventListener('click', sendMessage);
 
     const bc = new WebSocketSignaling();
     bc.addEventListener('message', (event) => {
@@ -133,9 +141,24 @@
             remoteVideo.srcObject = mediaStream;
         });
 
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        peerConnection.addEventListener('datachannel', event => {
+            console.log('datachannel', event);
+            dataChannel = event.channel;
+            dataChannel.addEventListener('open', () => {
+                console.log('openED dc');
+                chat.classList.remove('invisible');
+            });
+            dataChannel.addEventListener('message', (evt) => {
+                console.log('MESSAGE: ', evt.data);
+                addMessage('secondTab', evt.data);
+            });
+        });
 
-        statsGathererInterval = setInterval(processStats, 1000);
+        if (localStream) {
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            statsGathererInterval = setInterval(processStats, 1000);
+        }
+
         console.log('connection created', peerConnection);
     }
 
@@ -164,6 +187,9 @@
     }
 
     async function handleOffer(offer) {
+        if (!peerConnection) {
+            createPeerConnection(); // when offer comes from chat button
+        }
         await peerConnection.setRemoteDescription(offer);
         const answer = await peerConnection.createAnswer();
         bc.postMessage({
@@ -218,5 +244,44 @@
             createOffer();
             isVideoOn = true;
         }
+    }
+
+    async function openChat() {
+        console.log('open dc');
+        if (!peerConnection) {
+            createPeerConnection();
+        }
+
+        dataChannel = peerConnection.createDataChannel('dataChannel');
+        console.log('create data channel', dataChannel.readyState);
+
+        dataChannel.addEventListener('open', () => {
+            console.log('openED dc');
+            chat.classList.remove('invisible');
+        });
+
+        dataChannel.addEventListener('message', (evt) => {
+            console.log('MESSAGE: ', evt.data);
+            addMessage('secondTab', evt.data);
+        });
+
+        await createOffer();
+    }
+
+    function sendMessage() {
+        const message = messageBox.value;
+        console.log('message', message);
+        dataChannel.send(message);
+        addMessage('me', message);
+        messageBox.value = '';
+    }
+
+    function addMessage(sender, text) {
+        const messageEl = document.createElement('p');
+        const senderEl = document.createElement('span');
+        senderEl.appendChild(document.createTextNode(`${sender}: `));
+        messageEl.appendChild(senderEl);
+        messageEl.appendChild(document.createTextNode(text));
+        messages.appendChild(messageEl);
     }
 })()
