@@ -336,6 +336,7 @@
 
     async function joinRoomById() {
         const roomId = roomIdInput.value;
+        console.log('joinRoomById room id', roomId);
         const db = firebase.firestore();
         const roomRef = db.collection('rooms').doc(`${roomId}`);
         const roomSnapshot = await roomRef.get();
