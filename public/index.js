@@ -24,14 +24,15 @@
 
     let isVideoOn = false;
 
-    answerButton.disabled = true;
+    // answerButton.disabled = true;
     hungUpButton.disabled = true;
     startCallButton.addEventListener('click', startCall);
-    answerButton.addEventListener('click', answerCall);
+    // answerButton.addEventListener('click', answerCall);
     hungUpButton.addEventListener('click', hungUp);
     toggleVideoButton.addEventListener('click', toggleVideo);
     openChatButton.addEventListener('click', openChat);
     sendMessageButton.addEventListener('click', sendMessage);
+    answerButton.addEventListener('click', joinRoomById);
 
     // const bc = new WebSocketSignaling();
     // bc.addEventListener('message', (event) => {
@@ -92,11 +93,28 @@
         roomRef = await db.collection('rooms').doc();
         callerCandidatesCollection = roomRef.collection('callerCandidates');
 
+
+        roomRef.collection('calleeCandidates').onSnapshot(snapshot => {
+            snapshot.docChanges().forEach(async change => {
+                if (change.type === 'added') {
+                    let data = change.doc.data();
+                    handleCandidate(new RTCIceCandidate(data));
+                }
+            });
+        });
+
         await createLocalStream();
 
         createPeerConnection();
 
         await createOffer();
+
+        roomRef.onSnapshot(async snapshot => {
+            const data = snapshot.data();
+            if (!peerConnection.currentRemoteDescription && data && data.answer) {
+                handleAnswer(new RTCSessionDescription(data.answer));
+            }
+        });
 
         // bc.postMessage({ type: 'calling' });
         hungUpButton.disabled = false;
@@ -192,9 +210,9 @@
 
     async function handleCandidate(candidate) {
         if (candidate.candidate) {
-            peerConnection.addIceCandidate(candidate);
+            await peerConnection.addIceCandidate(candidate);
         } else {
-            peerConnection.addIceCandidate(null);
+            await peerConnection.addIceCandidate(null);
         }
     }
 
@@ -225,6 +243,8 @@
         //     sdp: answer.sdp
         // })
         await peerConnection.setLocalDescription(answer);
+
+        return answer;
     }
 
     async function handleAnswer(answer) {
@@ -311,5 +331,46 @@
         messageEl.appendChild(senderEl);
         messageEl.appendChild(document.createTextNode(text));
         messages.appendChild(messageEl);
+    }
+
+    async function joinRoomById() {
+        const roomId = roomIdInput.value;
+        const db = firebase.firestore();
+        const roomRef = db.collection('rooms').doc(`${roomId}`);
+        const roomSnapshot = await roomRef.get();
+        if (roomSnapshot.exists) {
+            console.log('received offer', roomSnapshot.data().offer);
+            createPeerConnection();
+            const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
+            peerConnection.addEventListener('icecandidate', event => {
+                if (!event.candidate) {
+                    console.log('Got final candidate!');
+                    return;
+                }
+                console.log('Got candidate: ', event.candidate);
+                calleeCandidatesCollection.add(event.candidate.toJSON());
+            });
+
+
+            const offer = roomSnapshot.data().offer;
+            const answer = await handleOffer(offer);
+
+            const roomWithAnswer = {
+                answer: {
+                    type: answer.type,
+                    sdp: answer.sdp,
+                },
+            };
+            await roomRef.update(roomWithAnswer);
+
+            roomRef.collection('callerCandidates').onSnapshot(snapshot => {
+                snapshot.docChanges().forEach(async change => {
+                    if (change.type === 'added') {
+                        let data = change.doc.data();
+                        handleCandidate(new RTCIceCandidate(data));
+                    }
+                });
+            });
+        }
     }
 })()
