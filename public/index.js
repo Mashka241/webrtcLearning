@@ -15,7 +15,6 @@
     let roomRef;
     let roomId;
     const roomIdInput = document.querySelector('input#roomId');
-    let callerCandidatesCollection;
 
     let localStream;
     let peerConnection;
@@ -76,11 +75,11 @@
         console.log('local stream created');
     }
 
-    async function createRoom() {
-        const db = firebase.firestore();
-        roomRef = await db.collection('rooms').doc();
-        callerCandidatesCollection = roomRef.collection('callerCandidates');
-    }
+    // async function createRoom() {
+    //     const db = firebase.firestore();
+    //     roomRef = await db.collection('rooms').doc();
+    //     callerCandidatesCollection = roomRef.collection('callerCandidates');
+    // }
 
     async function startCall() {
         console.log('start call');
@@ -91,7 +90,7 @@
 
         const db = firebase.firestore();
         roomRef = await db.collection('rooms').doc();
-        callerCandidatesCollection = roomRef.collection('callerCandidates');
+        const callerCandidatesCollection = roomRef.collection('callerCandidates');
 
 
         roomRef.collection('calleeCandidates').onSnapshot(snapshot => {
@@ -105,7 +104,7 @@
 
         await createLocalStream();
 
-        createPeerConnection();
+        createPeerConnection(callerCandidatesCollection);
 
         await createOffer();
 
@@ -162,22 +161,22 @@
         });
     }
 
-    function createPeerConnection() {
+    function createPeerConnection(candidatesCollection) {
         console.log('createPeerConnection');
         const configuration = {};
         peerConnection = new RTCPeerConnection(configuration);
         peerConnection.addEventListener('icecandidate', (e) => {
-            const message = {
-                type: 'candidate',
-                candidate: null,
-            };
-            if (e.candidate) {
-                message.candidate = e.candidate.candidate;
-                message.sdpMid = e.candidate.sdpMid;
-                message.sdpMLineIndex = e.candidate.sdpMLineIndex;
-            };
+            // const message = {
+            //     type: 'candidate',
+            //     candidate: null,
+            // };
+            // if (e.candidate) {
+            //     message.candidate = e.candidate.candidate;
+            //     message.sdpMid = e.candidate.sdpMid;
+            //     message.sdpMLineIndex = e.candidate.sdpMLineIndex;
+            // };
 
-            callerCandidatesCollection.add(e.candidate.toJSON());
+            candidatesCollection.add(e.candidate.toJSON());
             // bc.postMessage(message);
         });
 
@@ -340,17 +339,8 @@
         const roomSnapshot = await roomRef.get();
         if (roomSnapshot.exists) {
             console.log('received offer', roomSnapshot.data().offer);
-            createPeerConnection();
             const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
-            peerConnection.addEventListener('icecandidate', event => {
-                if (!event.candidate) {
-                    console.log('Got final candidate!');
-                    return;
-                }
-                console.log('Got candidate: ', event.candidate);
-                calleeCandidatesCollection.add(event.candidate.toJSON());
-            });
-
+            createPeerConnection(calleeCandidatesCollection);
 
             const offer = roomSnapshot.data().offer;
             const answer = await handleOffer(offer);
