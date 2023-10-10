@@ -68,7 +68,7 @@
     // });
 
     async function createLocalStream() {
-        const constraints = { video: true, audio: true };
+        const constraints = { video: true, audio: false };
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
         localVideo.srcObject = localStream;
         window.localMediaStream = localStream;
@@ -339,6 +339,7 @@
         const db = firebase.firestore();
         const roomRef = db.collection('rooms').doc(`${roomId}`);
         const roomSnapshot = await roomRef.get();
+        console.log('joinRoomById roomSnapshot.exists', roomSnapshot.exists);
         if (roomSnapshot.exists) {
             console.log('received offer', roomSnapshot.data().offer);
             const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
