@@ -17,6 +17,7 @@
     const roomIdInput = document.querySelector('input#roomId');
 
     let localStream;
+    let remoteStream;
     let peerConnection;
     let statsGathererInterval;
     let dataChannel;
@@ -73,6 +74,9 @@
         localVideo.srcObject = localStream;
         window.localMediaStream = localStream;
         console.log('local stream created');
+
+        remoteStream = new MediaStream();
+        remoteVideo.srcObject = remoteStream;
     }
 
     // async function createRoom() {
@@ -184,8 +188,9 @@
 
         peerConnection.addEventListener('track', (event) => {
             const mediaStream = event.streams[0];
-            window.remoteMediaStream = mediaStream;
-            remoteVideo.srcObject = mediaStream;
+            mediaStream.getTracks().forEach(track => {
+                remoteStream.addTrack(track)
+            });
         });
 
         peerConnection.addEventListener('datachannel', event => {
@@ -249,6 +254,7 @@
     }
 
     async function handleAnswer(answer) {
+        console.log('answer', answer);
         await peerConnection.setRemoteDescription(answer);
     }
 
