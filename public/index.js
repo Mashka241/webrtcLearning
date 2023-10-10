@@ -68,7 +68,7 @@
     // });
 
     async function createLocalStream() {
-        const constraints = { video: false, audio: true };
+        const constraints = { video: true, audio: true };
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
         localVideo.srcObject = localStream;
         window.localMediaStream = localStream;
@@ -175,7 +175,9 @@
             //     message.sdpMid = e.candidate.sdpMid;
             //     message.sdpMLineIndex = e.candidate.sdpMLineIndex;
             // };
-
+            if (!e.candidate) {
+                return;
+            }
             candidatesCollection.add(e.candidate.toJSON());
             // bc.postMessage(message);
         });
