@@ -341,6 +341,7 @@
     }
 
     async function joinRoomById() {
+        await createLocalStream();
         const roomId = roomIdInput.value;
         console.log('joinRoomById room id', roomId);
         const db = firebase.firestore();
