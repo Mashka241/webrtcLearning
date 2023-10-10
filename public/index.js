@@ -33,39 +33,39 @@
     openChatButton.addEventListener('click', openChat);
     sendMessageButton.addEventListener('click', sendMessage);
 
-    const bc = new WebSocketSignaling();
-    bc.addEventListener('message', (event) => {
-        switch (event.data.type) {
-            case 'calling':
-                answerButton.disabled = false;
-                answerButton.classList.add('calling');
-                break;
-            case 'answering':
-                createOffer();
-                break;
-            case 'candidate':
-                handleCandidate(event.data);
-                break;
-            case 'offer':
-                handleOffer(event.data);
-                break;
-            case 'answer':
-                handleAnswer(event.data);
-                break;
-            case 'hungup':
-                answerButton.disabled = true;
-                answerButton.classList.remove('calling');
-                hungUpButton.disabled = true;
-                hungUpButton.classList.remove('hungup');
-                startCallButton.disabled = false;
-                if (peerConnection) {
-                    hungUp();
-                }
-                break;
-            default:
-                console.log('default', event.data.type);
-        }
-    });
+    // const bc = new WebSocketSignaling();
+    // bc.addEventListener('message', (event) => {
+    //     switch (event.data.type) {
+    //         case 'calling':
+    //             answerButton.disabled = false;
+    //             answerButton.classList.add('calling');
+    //             break;
+    //         case 'answering':
+    //             createOffer();
+    //             break;
+    //         case 'candidate':
+    //             handleCandidate(event.data);
+    //             break;
+    //         case 'offer':
+    //             handleOffer(event.data);
+    //             break;
+    //         case 'answer':
+    //             handleAnswer(event.data);
+    //             break;
+    //         case 'hungup':
+    //             answerButton.disabled = true;
+    //             answerButton.classList.remove('calling');
+    //             hungUpButton.disabled = true;
+    //             hungUpButton.classList.remove('hungup');
+    //             startCallButton.disabled = false;
+    //             if (peerConnection) {
+    //                 hungUp();
+    //             }
+    //             break;
+    //         default:
+    //             console.log('default', event.data.type);
+    //     }
+    // });
 
     async function createLocalStream() {
         const constraints = { video: false, audio: true };
@@ -117,6 +117,7 @@
         //     type: offer.type,
         //     sdp: offer.sdp
         // });
+        console.log('offer', offer.sdp);
         await roomRef.set({
             offer: {
                 type: offer.type,
@@ -207,7 +208,7 @@
 
         createPeerConnection();
 
-        bc.postMessage({ type: 'answering' });
+        // bc.postMessage({ type: 'answering' });
         hungUpButton.disabled = false;
         hungUpButton.classList.add('hungup');
         startCallButton.disabled = true;
@@ -219,10 +220,10 @@
         }
         await peerConnection.setRemoteDescription(offer);
         const answer = await peerConnection.createAnswer();
-        bc.postMessage({
-            type: answer.type,
-            sdp: answer.sdp
-        })
+        // bc.postMessage({
+        //     type: answer.type,
+        //     sdp: answer.sdp
+        // })
         await peerConnection.setLocalDescription(answer);
     }
 
@@ -231,7 +232,7 @@
     }
 
     function hungUp() {
-        bc.postMessage({ type: 'hungup' });
+        // bc.postMessage({ type: 'hungup' });
 
         if (peerConnection) {
             peerConnection.close();
