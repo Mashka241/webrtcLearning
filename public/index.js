@@ -1,4 +1,11 @@
 (async () => {
+    // firebase
+    let roomRef;
+    let roomId;
+    const createRoomButton = document.querySelector("button#createRoom");
+    const roomIdInput = document.querySelector('input#roomId');
+
+    // call
     const startCallButton = document.querySelector('button#call');
     const answerButton = document.querySelector('button#answer');
     const hungUpButton = document.querySelector('button#hungup');
@@ -11,10 +18,6 @@
     const messages = document.querySelector('#messages');
     const messageBox = document.querySelector('#message');
     const sendMessageButton = document.querySelector('button#sendMessage');
-
-    let roomRef;
-    let roomId;
-    const roomIdInput = document.querySelector('input#roomId');
 
     let localStream;
     let remoteStream;
@@ -33,6 +36,13 @@
     openChatButton.addEventListener('click', openChat);
     sendMessageButton.addEventListener('click', sendMessage);
     answerButton.addEventListener('click', joinRoomById);
+
+    createRoomButton.addEventListener('click', createRoom);
+    roomIdInput.addEventListener('keyup', (event) => {
+        if (event.key === 'Enter') {
+            joinRoomById();
+        }
+    });
 
     // const bc = new WebSocketSignaling();
     // bc.addEventListener('message', (event) => {
@@ -68,6 +78,38 @@
     //     }
     // });
 
+    async function createRoom() {
+        const db = firebase.firestore();
+        roomRef = await db.collection('rooms').doc();
+        roomId = roomRef.id;
+
+        showCallScreen(roomId);
+    }
+
+    async function joinRoomById() {
+        const roomId = roomIdInput.value;
+        const db = firebase.firestore();
+        const roomRef = db.collection('rooms').doc(`${roomId}`);
+        const roomSnapshot = await roomRef.get();
+        if (roomSnapshot.exists) {
+            showCallScreen(roomId);
+        }
+    }
+
+    function showCallScreen(roomId) {
+        const roomIdEl = document.querySelector('.room-id');
+        const roomIdSpan = document.createElement('span');
+        roomIdSpan.appendChild(document.createTextNode(roomId));
+        roomIdEl.appendChild(roomIdSpan);
+        roomIdEl.classList.remove('invisible');
+
+        const startScreen = document.querySelector('.start-screen');
+        startScreen.classList.add('invisible');
+
+        const callScreen = document.querySelector('.call-screen');
+        callScreen.classList.remove('invisible');
+    }
+
     async function createLocalStream() {
         const constraints = { video: true, audio: false };
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -78,12 +120,6 @@
         remoteStream = new MediaStream();
         remoteVideo.srcObject = remoteStream;
     }
-
-    // async function createRoom() {
-    //     const db = firebase.firestore();
-    //     roomRef = await db.collection('rooms').doc();
-    //     callerCandidatesCollection = roomRef.collection('callerCandidates');
-    // }
 
     async function startCall() {
         console.log('start call');
@@ -340,38 +376,38 @@
         messages.appendChild(messageEl);
     }
 
-    async function joinRoomById() {
-        await createLocalStream();
-        const roomId = roomIdInput.value;
-        console.log('joinRoomById room id', roomId);
-        const db = firebase.firestore();
-        const roomRef = db.collection('rooms').doc(`${roomId}`);
-        const roomSnapshot = await roomRef.get();
-        console.log('joinRoomById roomSnapshot.exists', roomSnapshot.exists);
-        if (roomSnapshot.exists) {
-            console.log('received offer', roomSnapshot.data().offer);
-            const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
-            createPeerConnection(calleeCandidatesCollection);
+    // async function joinRoomById() {
+    //     await createLocalStream();
+    //     const roomId = roomIdInput.value;
+    //     console.log('joinRoomById room id', roomId);
+    //     const db = firebase.firestore();
+    //     const roomRef = db.collection('rooms').doc(`${roomId}`);
+    //     const roomSnapshot = await roomRef.get();
+    //     console.log('joinRoomById roomSnapshot.exists', roomSnapshot.exists);
+    //     if (roomSnapshot.exists) {
+    //         console.log('received offer', roomSnapshot.data().offer);
+    //         const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
+    //         createPeerConnection(calleeCandidatesCollection);
 
-            const offer = roomSnapshot.data().offer;
-            const answer = await handleOffer(offer);
+    //         const offer = roomSnapshot.data().offer;
+    //         const answer = await handleOffer(offer);
 
-            const roomWithAnswer = {
-                answer: {
-                    type: answer.type,
-                    sdp: answer.sdp,
-                },
-            };
-            await roomRef.update(roomWithAnswer);
+    //         const roomWithAnswer = {
+    //             answer: {
+    //                 type: answer.type,
+    //                 sdp: answer.sdp,
+    //             },
+    //         };
+    //         await roomRef.update(roomWithAnswer);
 
-            roomRef.collection('callerCandidates').onSnapshot(snapshot => {
-                snapshot.docChanges().forEach(async change => {
-                    if (change.type === 'added') {
-                        let data = change.doc.data();
-                        handleCandidate(new RTCIceCandidate(data));
-                    }
-                });
-            });
-        }
-    }
+    //         roomRef.collection('callerCandidates').onSnapshot(snapshot => {
+    //             snapshot.docChanges().forEach(async change => {
+    //                 if (change.type === 'added') {
+    //                     let data = change.doc.data();
+    //                     handleCandidate(new RTCIceCandidate(data));
+    //                 }
+    //             });
+    //         });
+    //     }
+    // }
 })()

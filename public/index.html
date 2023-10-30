@@ -27,27 +27,38 @@
 </head>
 
 <body>
-  <input id="roomId">
-  <div class="buttons container">
-    <button type="button" id="call">Start call</button>
-    <button type="button" id="answer">Answer</button>
-    <button type="button" id="hungup">Hung up</button>
-  </div>
-  <div class="renderers container">
-    <video id="localVideo" autoplay></video>
-    <video id="remoteVideo" autoplay></video>
-  </div>
-  <div class="container invisible" id="callcontrols">
-    <button type="button" id="videotoggle">toggle video</button>
-  </div>
   <div class="container">
-    <button type="button" id="openChat">Want to chat?</button>
-    <div class="chat invisible">
-      <div class="messages" id="messages">
+    <div class="start-screen">
+      <button type="button" id="createRoom">Create room</button>
+      <div class="room-id-input-container">
+        <label for="roomId">Already have an ID?</label>
+        <input id="roomId" type="text">
       </div>
-      <div class="container send">
-        <textarea id="message"></textarea>
-        <button type="button" id="sendMessage">Send</button>
+    </div>
+    <p class="room-id invisible">Your room ID is: </p>
+  </div>
+  <div class="call-screen invisible">
+    <div class="buttons container">
+      <button type="button" id="call">Start call</button>
+      <button type="button" id="answer">Answer</button>
+      <button type="button" id="hungup">Hung up</button>
+    </div>
+    <div class="renderers container">
+      <video id="localVideo" autoplay></video>
+      <video id="remoteVideo" autoplay></video>
+    </div>
+    <div class="container invisible" id="callcontrols">
+      <button type="button" id="videotoggle">toggle video</button>
+    </div>
+    <div class="container">
+      <button type="button" id="openChat">Want to chat?</button>
+      <div class="chat invisible">
+        <div class="messages" id="messages">
+        </div>
+        <div class="container send">
+          <textarea id="message"></textarea>
+          <button type="button" id="sendMessage">Send</button>
+        </div>
       </div>
     </div>
   </div>
