@@ -5,7 +5,7 @@
     const createRoomButton = document.querySelector("button#createRoom");
     const roomIdInput = document.querySelector('input#roomId');
 
-    // call
+    // call elements
     const startCallButton = document.querySelector('button#call');
     const answerButton = document.querySelector('button#answer');
     const hungUpButton = document.querySelector('button#hungup');
@@ -13,6 +13,8 @@
     const toggleVideoButton = document.querySelector('button#videotoggle');
     const remoteVideo = document.querySelector('video#remoteVideo');
     const localVideo = document.querySelector('video#localVideo');
+
+    // chat elements
     const openChatButton = document.querySelector('button#openChat');
     const chat = document.querySelector('.chat');
     const messages = document.querySelector('#messages');
@@ -20,22 +22,20 @@
     const sendMessageButton = document.querySelector('button#sendMessage');
 
     let localStream;
-    let remoteStream;
     let peerConnection;
     let statsGathererInterval;
     let dataChannel;
 
     let isVideoOn = false;
 
-    // answerButton.disabled = true;
+    answerButton.disabled = true;
     hungUpButton.disabled = true;
     startCallButton.addEventListener('click', startCall);
-    // answerButton.addEventListener('click', answerCall);
+    answerButton.addEventListener('click', answerCall);
     hungUpButton.addEventListener('click', hungUp);
     toggleVideoButton.addEventListener('click', toggleVideo);
     openChatButton.addEventListener('click', openChat);
     sendMessageButton.addEventListener('click', sendMessage);
-    answerButton.addEventListener('click', joinRoomById);
 
     createRoomButton.addEventListener('click', createRoom);
     roomIdInput.addEventListener('keyup', (event) => {
@@ -44,56 +44,34 @@
         }
     });
 
-    // const bc = new WebSocketSignaling();
-    // bc.addEventListener('message', (event) => {
-    //     switch (event.data.type) {
-    //         case 'calling':
-    //             answerButton.disabled = false;
-    //             answerButton.classList.add('calling');
-    //             break;
-    //         case 'answering':
-    //             createOffer();
-    //             break;
-    //         case 'candidate':
-    //             handleCandidate(event.data);
-    //             break;
-    //         case 'offer':
-    //             handleOffer(event.data);
-    //             break;
-    //         case 'answer':
-    //             handleAnswer(event.data);
-    //             break;
-    //         case 'hungup':
-    //             answerButton.disabled = true;
-    //             answerButton.classList.remove('calling');
-    //             hungUpButton.disabled = true;
-    //             hungUpButton.classList.remove('hungup');
-    //             startCallButton.disabled = false;
-    //             if (peerConnection) {
-    //                 hungUp();
-    //             }
-    //             break;
-    //         default:
-    //             console.log('default', event.data.type);
-    //     }
-    // });
-
     async function createRoom() {
         const db = firebase.firestore();
         roomRef = await db.collection('rooms').doc();
         roomId = roomRef.id;
 
         showCallScreen(roomId);
+        subscribeOnOffer();
     }
 
     async function joinRoomById() {
         const roomId = roomIdInput.value;
         const db = firebase.firestore();
-        const roomRef = db.collection('rooms').doc(`${roomId}`);
-        const roomSnapshot = await roomRef.get();
-        if (roomSnapshot.exists) {
-            showCallScreen(roomId);
-        }
+        roomRef = db.collection('rooms').doc(`${roomId}`); // reference
+        // const roomSnapshot = await roomRef.get(); // content
+        // if (roomSnapshot.exists) {
+        showCallScreen(roomId);
+        subscribeOnOffer();
+        // }
+    }
+
+    function subscribeOnOffer() {
+        roomRef.onSnapshot(async snapshot => {
+            const data = snapshot.data();
+            if (data && data.offer) {
+                answerButton.disabled = false;
+                answerButton.classList.add('calling');
+            }
+        });
     }
 
     function showCallScreen(roomId) {
@@ -116,9 +94,6 @@
         localVideo.srcObject = localStream;
         window.localMediaStream = localStream;
         console.log('local stream created');
-
-        remoteStream = new MediaStream();
-        remoteVideo.srcObject = remoteStream;
     }
 
     async function startCall() {
@@ -128,15 +103,12 @@
             return;
         }
 
-        const db = firebase.firestore();
-        roomRef = await db.collection('rooms').doc();
         const callerCandidatesCollection = roomRef.collection('callerCandidates');
-
 
         roomRef.collection('calleeCandidates').onSnapshot(snapshot => {
             snapshot.docChanges().forEach(async change => {
                 if (change.type === 'added') {
-                    let data = change.doc.data();
+                    const data = change.doc.data();
                     handleCandidate(new RTCIceCandidate(data));
                 }
             });
@@ -155,7 +127,6 @@
             }
         });
 
-        // bc.postMessage({ type: 'calling' });
         hungUpButton.disabled = false;
         hungUpButton.classList.add('hungup');
         startCallButton.disabled = true;
@@ -170,10 +141,7 @@
             offerToReceiveVideo: 1
         };
         const offer = await peerConnection.createOffer(offerOptions);
-        // bc.postMessage({
-        //     type: offer.type,
-        //     sdp: offer.sdp
-        // });
+
         console.log('offer', offer.sdp);
         await roomRef.set({
             offer: {
@@ -181,8 +149,7 @@
                 sdp: offer.sdp
             }
         });
-        roomId = roomRef.id;
-        console.log('roomID', roomId);
+
         await peerConnection.setLocalDescription(offer);
     }
 
@@ -224,9 +191,10 @@
 
         peerConnection.addEventListener('track', (event) => {
             const mediaStream = event.streams[0];
-            mediaStream.getTracks().forEach(track => {
-                remoteStream.addTrack(track)
-            });
+            // mediaStream.getTracks().forEach(track => {
+            //     remoteStream.addTrack(track)
+            // });
+            remoteVideo.srcObject = mediaStream;
         });
 
         peerConnection.addEventListener('datachannel', event => {
@@ -265,28 +233,43 @@
         callButtons.classList.remove('invisible');
 
         await createLocalStream();
+        const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
+        createPeerConnection(calleeCandidatesCollection);
 
-        createPeerConnection();
+        const offer = roomSnapshot.data().offer;
+        handleOffer(offer);
 
-        // bc.postMessage({ type: 'answering' });
+        roomRef.collection('callerCandidates').onSnapshot(snapshot => {
+            snapshot.docChanges().forEach(async change => {
+                if (change.type === 'added') {
+                    let data = change.doc.data();
+                    handleCandidate(new RTCIceCandidate(data));
+                }
+            });
+        });
+
         hungUpButton.disabled = false;
         hungUpButton.classList.add('hungup');
         startCallButton.disabled = true;
     }
 
     async function handleOffer(offer) {
+        console.log('handle offer');
         if (!peerConnection) {
             createPeerConnection(); // when offer comes from chat button
         }
         await peerConnection.setRemoteDescription(offer);
         const answer = await peerConnection.createAnswer();
-        // bc.postMessage({
-        //     type: answer.type,
-        //     sdp: answer.sdp
-        // })
-        await peerConnection.setLocalDescription(answer);
 
-        return answer;
+        const roomWithAnswer = {
+            answer: {
+                type: answer.type,
+                sdp: answer.sdp,
+            },
+        };
+        await roomRef.update(roomWithAnswer);
+
+        await peerConnection.setLocalDescription(answer);
     }
 
     async function handleAnswer(answer) {
@@ -375,39 +358,4 @@
         messageEl.appendChild(document.createTextNode(text));
         messages.appendChild(messageEl);
     }
-
-    // async function joinRoomById() {
-    //     await createLocalStream();
-    //     const roomId = roomIdInput.value;
-    //     console.log('joinRoomById room id', roomId);
-    //     const db = firebase.firestore();
-    //     const roomRef = db.collection('rooms').doc(`${roomId}`);
-    //     const roomSnapshot = await roomRef.get();
-    //     console.log('joinRoomById roomSnapshot.exists', roomSnapshot.exists);
-    //     if (roomSnapshot.exists) {
-    //         console.log('received offer', roomSnapshot.data().offer);
-    //         const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
-    //         createPeerConnection(calleeCandidatesCollection);
-
-    //         const offer = roomSnapshot.data().offer;
-    //         const answer = await handleOffer(offer);
-
-    //         const roomWithAnswer = {
-    //             answer: {
-    //                 type: answer.type,
-    //                 sdp: answer.sdp,
-    //             },
-    //         };
-    //         await roomRef.update(roomWithAnswer);
-
-    //         roomRef.collection('callerCandidates').onSnapshot(snapshot => {
-    //             snapshot.docChanges().forEach(async change => {
-    //                 if (change.type === 'added') {
-    //                     let data = change.doc.data();
-    //                     handleCandidate(new RTCIceCandidate(data));
-    //                 }
-    //             });
-    //         });
-    //     }
-    // }
 })()
