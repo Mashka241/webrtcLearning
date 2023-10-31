@@ -236,6 +236,7 @@
         const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
         createPeerConnection(calleeCandidatesCollection);
 
+        const roomSnapshot = await roomRef.get(); // content
         const offer = roomSnapshot.data().offer;
         handleOffer(offer);
 
