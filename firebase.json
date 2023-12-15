@@ -4,6 +4,7 @@
   },
   "hosting": {
     "public": "public",
+    "port": "5002",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -15,5 +16,11 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "emulators": {
+    "singleProjectMode": false,
+    "firestore": {
+      "port": "8775"
+    }
   }
 }

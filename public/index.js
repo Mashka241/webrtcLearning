@@ -46,6 +46,9 @@
 
     async function createRoom() {
         const db = firebase.firestore();
+        if (location.hostname === "localhost") {
+            db.useEmulator("127.0.0.1", 8775);
+        }
         roomRef = await db.collection('rooms').doc();
         roomId = roomRef.id;
 
@@ -56,6 +59,9 @@
     async function joinRoomById() {
         const roomId = roomIdInput.value;
         const db = firebase.firestore();
+        if (location.hostname === "localhost") {
+            db.useEmulator("127.0.0.1", 8775);
+        }
         roomRef = db.collection('rooms').doc(`${roomId}`); // reference
         // const roomSnapshot = await roomRef.get(); // content
         // if (roomSnapshot.exists) {
