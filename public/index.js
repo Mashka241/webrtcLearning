@@ -1,9 +1,8 @@
 (async () => {
     // firebase
-    let roomRef;
-    let roomId;
     const createRoomButton = document.querySelector("button#createRoom");
     const roomIdInput = document.querySelector('input#roomId');
+    const signaling = new FirebaseSignaling();
 
     // call elements
     const startCallButton = document.querySelector('button#call');
@@ -45,39 +44,24 @@
     });
 
     async function createRoom() {
-        const db = firebase.firestore();
-        if (location.hostname === "localhost") {
-            db.useEmulator("127.0.0.1", 8775);
-        }
-        roomRef = await db.collection('rooms').doc();
-        roomId = roomRef.id;
-
+        const roomId = await signaling.createRoom();
         showCallScreen(roomId);
-        subscribeOnOffer();
+        signaling.subscribeOnOffer(enableAnswerButton);
     }
 
     async function joinRoomById() {
         const roomId = roomIdInput.value;
-        const db = firebase.firestore();
-        if (location.hostname === "localhost") {
-            db.useEmulator("127.0.0.1", 8775);
-        }
-        roomRef = db.collection('rooms').doc(`${roomId}`); // reference
+        signaling.joinRoomById(roomId);
         // const roomSnapshot = await roomRef.get(); // content
         // if (roomSnapshot.exists) {
         showCallScreen(roomId);
-        subscribeOnOffer();
+        signaling.subscribeOnOffer(enableAnswerButton);
         // }
     }
 
-    function subscribeOnOffer() {
-        roomRef.onSnapshot(async snapshot => {
-            const data = snapshot.data();
-            if (data && data.offer) {
-                answerButton.disabled = false;
-                answerButton.classList.add('calling');
-            }
-        });
+    function enableAnswerButton() {
+        answerButton.disabled = false;
+        answerButton.classList.add('calling');
     }
 
     function showCallScreen(roomId) {
@@ -109,16 +93,8 @@
             return;
         }
 
-        const callerCandidatesCollection = roomRef.collection('callerCandidates');
-
-        roomRef.collection('calleeCandidates').onSnapshot(snapshot => {
-            snapshot.docChanges().forEach(async change => {
-                if (change.type === 'added') {
-                    const data = change.doc.data();
-                    handleCandidate(new RTCIceCandidate(data));
-                }
-            });
-        });
+        const callerCandidatesCollection = signaling.createCandidatesCollection('callerCandidates');
+        signaling.onCandidatesAdded('calleeCandidates', handleCandidate);
 
         await createLocalStream();
 
@@ -126,10 +102,9 @@
 
         await createOffer();
 
-        roomRef.onSnapshot(async snapshot => {
-            const data = snapshot.data();
-            if (!peerConnection.currentRemoteDescription && data && data.answer) {
-                handleAnswer(new RTCSessionDescription(data.answer));
+        signaling.subscribeOnAnswer((answer) => {
+            if (!peerConnection.currentRemoteDescription) {
+                handleAnswer(answer);
             }
         });
 
@@ -149,12 +124,8 @@
         const offer = await peerConnection.createOffer(offerOptions);
 
         console.log('offer', offer.sdp);
-        await roomRef.set({
-            offer: {
-                type: offer.type,
-                sdp: offer.sdp
-            }
-        });
+
+        await signaling.setOffer(offer);
 
         await peerConnection.setLocalDescription(offer);
     }
@@ -179,20 +150,10 @@
         const configuration = {};
         peerConnection = new RTCPeerConnection(configuration);
         peerConnection.addEventListener('icecandidate', (e) => {
-            // const message = {
-            //     type: 'candidate',
-            //     candidate: null,
-            // };
-            // if (e.candidate) {
-            //     message.candidate = e.candidate.candidate;
-            //     message.sdpMid = e.candidate.sdpMid;
-            //     message.sdpMLineIndex = e.candidate.sdpMLineIndex;
-            // };
             if (!e.candidate) {
                 return;
             }
             candidatesCollection.add(e.candidate.toJSON());
-            // bc.postMessage(message);
         });
 
         peerConnection.addEventListener('track', (event) => {
@@ -239,21 +200,15 @@
         callButtons.classList.remove('invisible');
 
         await createLocalStream();
-        const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
+
+        const calleeCandidatesCollection = signaling.createCandidatesCollection('calleeCandidates');
+
         createPeerConnection(calleeCandidatesCollection);
 
-        const roomSnapshot = await roomRef.get(); // content
-        const offer = roomSnapshot.data().offer;
+        const offer = await signaling.getOffer();
         handleOffer(offer);
 
-        roomRef.collection('callerCandidates').onSnapshot(snapshot => {
-            snapshot.docChanges().forEach(async change => {
-                if (change.type === 'added') {
-                    let data = change.doc.data();
-                    handleCandidate(new RTCIceCandidate(data));
-                }
-            });
-        });
+        signaling.onCandidatesAdded('callerCandidates', handleCandidate);
 
         hungUpButton.disabled = false;
         hungUpButton.classList.add('hungup');
@@ -261,20 +216,14 @@
     }
 
     async function handleOffer(offer) {
-        console.log('handle offer');
+        console.log('handle offer', offer);
         if (!peerConnection) {
             createPeerConnection(); // when offer comes from chat button
         }
         await peerConnection.setRemoteDescription(offer);
         const answer = await peerConnection.createAnswer();
 
-        const roomWithAnswer = {
-            answer: {
-                type: answer.type,
-                sdp: answer.sdp,
-            },
-        };
-        await roomRef.update(roomWithAnswer);
+        signaling.setAnswer(answer);
 
         await peerConnection.setLocalDescription(answer);
     }
