@@ -5,6 +5,7 @@ class FirebaseSignaling {
     _roomId;
     _offer;
 
+    db;
     get roomId() {
         return this._roomId;
     }
@@ -17,29 +18,35 @@ class FirebaseSignaling {
         this._roomRef = value;
     }
 
-    initFireStore() {
-        const db = firebase.firestore();
+    constructor() {
+        this.db = firebase.firestore();
         if (location.hostname === "localhost") {
-            db.useEmulator("127.0.0.1", 8775);
+            this.db.useEmulator("127.0.0.1", 8775);
         }
-        return db;
     }
 
     async createRoom() {
-        const db = this.initFireStore();
-        this._roomRef = await db.collection('rooms').doc();
+        this._roomRef = await this.db.collection('rooms').doc();
         this._roomId = this._roomRef.id;
+        await this._roomRef.set({
+            date: Date.now()
+        });
         return this._roomId;
+    }
+
+    async isRoom(roomId) {
+        const room = this.db.collection('rooms').doc(`${roomId}`);
+        const roomSnapshot = await room.get();
+        return roomSnapshot.exists;
     }
 
     joinRoomById(roomId) {
         this._roomId = roomId;
-        const db = this.initFireStore();
-        this._roomRef = db.collection('rooms').doc(`${roomId}`);
+        this._roomRef = this.db.collection('rooms').doc(`${roomId}`);
     }
 
     async setOffer(offer) {
-        await this._roomRef.set({
+        await this._roomRef.update({
             offer: {
                 type: offer.type,
                 sdp: offer.sdp

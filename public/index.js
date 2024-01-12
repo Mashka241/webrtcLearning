@@ -51,12 +51,12 @@
 
     async function joinRoomById() {
         const roomId = roomIdInput.value;
-        signaling.joinRoomById(roomId);
-        // const roomSnapshot = await roomRef.get(); // content
-        // if (roomSnapshot.exists) {
-        showCallScreen(roomId);
-        signaling.subscribeOnOffer(enableAnswerButton);
-        // }
+        const isRoom = await signaling.isRoom(roomId);
+        if (isRoom) {
+            signaling.joinRoomById(roomId);
+            showCallScreen(roomId);
+            signaling.subscribeOnOffer(enableAnswerButton);
+        }
     }
 
     function enableAnswerButton() {
