@@ -4,6 +4,8 @@ class FirebaseSignaling {
     _roomRef;
     _roomId;
     _offer;
+    _offerRef;
+    _answerRef;
 
     db;
     get roomId() {
@@ -28,6 +30,8 @@ class FirebaseSignaling {
     async createRoom() {
         this._roomRef = await this.db.collection('rooms').doc();
         this._roomId = this._roomRef.id;
+        this._offerRef = this._roomRef.collection('signaling').doc('offer');
+        this._answerRef = this._roomRef.collection('signaling').doc('answer');
         await this._roomRef.set({
             date: Date.now()
         });
@@ -43,45 +47,43 @@ class FirebaseSignaling {
     joinRoomById(roomId) {
         this._roomId = roomId;
         this._roomRef = this.db.collection('rooms').doc(`${roomId}`);
+
+        this._offerRef = this._roomRef.collection('signaling').doc('offer');
+        this._answerRef = this._roomRef.collection('signaling').doc('answer');
     }
 
     async setOffer(offer) {
-        await this._roomRef.update({
-            offer: {
-                type: offer.type,
-                sdp: offer.sdp
-            }
+        this._offerRef.set({
+            type: offer.type,
+            sdp: offer.sdp
         });
     }
 
     async getOffer() {
-        const roomSnapshot = await this._roomRef.get();
-        return roomSnapshot.data().offer;
+        return this._offerRef.get().then(doc => doc.data());
     }
 
     subscribeOnOffer(cb) {
-        this._roomRef.onSnapshot(async snapshot => {
+        this._offerRef.onSnapshot(async snapshot => {
             const data = snapshot.data();
-            if (data && data.offer) {
+            if (data) {
                 cb();
             }
         });
     }
 
     async setAnswer(answer) {
-        await this._roomRef.update({ // update some fields, without overwriting the entire document
-            answer: {
-                type: answer.type,
-                sdp: answer.sdp,
-            }
+        this._answerRef.set({
+            type: answer.type,
+            sdp: answer.sdp
         });
     }
 
     subscribeOnAnswer(cb) {
-        this._roomRef.onSnapshot(async snapshot => {
+        this._answerRef.onSnapshot(async snapshot => {
             const data = snapshot.data();
-            if (data && data.answer) {
-                cb(new RTCSessionDescription(data.answer));
+            if (data) {
+                cb(new RTCSessionDescription(data));
             }
         });
     }
